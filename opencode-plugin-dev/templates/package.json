@@ -1,0 +1,40 @@
+{
+  "name": "opencode-your-plugin",
+  "version": "1.0.0",
+  "description": "Brief description of what your plugin does",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node --format esm --external @opencode-ai/plugin --external @opencode-ai/sdk",
+    "watch": "bun build src/index.ts --outdir dist --target node --format esm --external @opencode-ai/plugin --external @opencode-ai/sdk --watch",
+    "prepare": "bun run build",
+    "test": "bun test",
+    "lint": "biome check .",
+    "format": "biome format . --write"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "ai",
+    "llm"
+  ],
+  "files": [
+    "dist",
+    "src/skills",
+    "src/agents",
+    "README.md"
+  ],
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.3.17"
+  },
+  "peerDependencies": {
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "zod": "^4.0.0"
+  },
+  "trustedDependencies": [],
+}
