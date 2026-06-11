@@ -32,8 +32,12 @@ Use when creating, writing, or generating Nuclei YAML templates for CVE coverage
 
 Guide for creating OpenCode plugins from scratch — scaffolding, implementing tools/hooks/events, bundling skills and agents, local testing, and publishing to npm. Use when the user asks to create a plugin, extend OpenCode, add custom tools/hooks, develop an extension, or mentions plugin development. Also trigger when users say "I want to build a plugin", "add custom tools to opencode", "create an opencode extension", or reference @opencode-ai/plugin.
 
+### [test-skill](test-skill/SKILL.md)
+
+A test skill to verify the indexing system works correctly.
+
 ---
 
 *Generated on 2026-06-11*
 
-*Total skills: 7*
+*Total skills: 8*
