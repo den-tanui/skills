@@ -6,7 +6,7 @@ This is an automatically generated index of all skills in this repository.
 
 ### [fzf](fzf/SKILL.md)
 
-Comprehensive patterns and documentation for building advanced, interactive CLI tools using fzf in shell scripts.
+Comprehensive patterns and documentation for building advanced, interactive CLI tools using fzf in shell scripts. Updated description for testing.
 
 ### [fzf-advanced](fzf-advanced/SKILL.md)
 

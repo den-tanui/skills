@@ -1,6 +1,6 @@
 ---
 name: fzf
-description: Comprehensive patterns and documentation for building advanced, interactive CLI tools using fzf in shell scripts.
+description: Comprehensive patterns and documentation for building advanced, interactive CLI tools using fzf in shell scripts. Updated description for testing.
 ---
 
 # fzf Advanced Scripting Skill
