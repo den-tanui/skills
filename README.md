@@ -8,6 +8,10 @@ This is an automatically generated index of all skills in this repository.
 
 Comprehensive patterns and documentation for building advanced, interactive CLI tools using fzf in shell scripts. Updated description for testing.
 
+### [fzf-advanced](fzf/skill-fzf/SKILL.md)
+
+Advanced fzf patterns and techniques for building robust shell scripts with interactive selection.
+
 ### [fzf-advanced](fzf-advanced/SKILL.md)
 
 Production-grade fzf patterns for robust, defensive shell scripts
@@ -36,4 +40,4 @@ Guide for creating OpenCode plugins from scratch — scaffolding, implementing t
 
 *Generated on 2026-06-11*
 
-*Total skills: 7*
+*Total skills: 8*

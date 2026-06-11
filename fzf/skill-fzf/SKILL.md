@@ -1,3 +1,8 @@
+---
+name: fzf-advanced
+description: Advanced fzf patterns and techniques for building robust shell scripts with interactive selection.
+---
+
 # fzf Advanced Scripting Skill
 
 This skill provides comprehensive patterns and documentation for building advanced, interactive CLI tools using `fzf`. It is optimized for AI agents writing shell scripts (bash/zsh/fish).
