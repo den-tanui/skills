@@ -259,16 +259,45 @@ On each trigger, `skill-manager scan` runs the full incremental scan (hash all f
 
 ### Output
 
-Each result returns:
-- `name` — skill name from frontmatter or directory name
-- `source_dir` — tracked directory it was found in
-- `path` — absolute path to the SKILL.md file
-- `score` — relevance score (0 to 1)
+Default (human-readable table):
+```
+name              score  source_dir
+react-validation  0.87   ~/.config/opencode/skills
+fzf-advanced      0.62   ~/my-skills
+```
+
+JSON (per result — for plugin/agent consumption):
+```json
+{
+  "name": "react-form-validation",
+  "description": "Validates React forms with Zod",
+  "score": 0.87,
+  "source_dir": "~/.config/opencode/skills",
+  "abs_path": "/home/user/.config/opencode/skills/react-form-validation/SKILL.md",
+  "files": {
+    "SKILL.md": "/home/user/.config/opencode/skills/react-form-validation/SKILL.md",
+    "scripts": [
+      "/home/user/.../react-form-validation/scripts/setup.sh",
+      "/home/user/.../react-form-validation/scripts/teardown.sh"
+    ],
+    "references": [
+      "/home/user/.../react-form-validation/references/api-patterns.md"
+    ],
+    "other": []
+  },
+  "file_count": 4,
+  "source_url": null,
+  "source_commit_hash": null,
+  "install_method": "discovered"
+}
+```
+
+The `files` manifest is assembled from the `file_hashes` table at query time. This allows an agent (or MCP plugin in v3) to know exactly which files are available in the skill dir — SKILL.md is always present, plus any scripts/, references/, docs/ files.
 
 ### Output Formats
 
 - Default: human-readable table
-- `--json`: JSON array for programmatic use (fzf, MCP plugin)
+- `--json`: JSON array with full fields including the `files` map
 
 ### Filters
 
