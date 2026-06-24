@@ -274,17 +274,12 @@ JSON (per result — for plugin/agent consumption):
   "score": 0.87,
   "source_dir": "~/.config/opencode/skills",
   "abs_path": "/home/user/.config/opencode/skills/react-form-validation/SKILL.md",
-  "files": {
-    "SKILL.md": "/home/user/.config/opencode/skills/react-form-validation/SKILL.md",
-    "scripts": [
-      "/home/user/.../react-form-validation/scripts/setup.sh",
-      "/home/user/.../react-form-validation/scripts/teardown.sh"
-    ],
-    "references": [
-      "/home/user/.../react-form-validation/references/api-patterns.md"
-    ],
-    "other": []
-  },
+  "files": [
+    "SKILL.md",
+    "scripts/setup.sh",
+    "scripts/teardown.sh",
+    "references/api-patterns.md"
+  ],
   "file_count": 4,
   "source_url": null,
   "source_commit_hash": null,
@@ -292,7 +287,7 @@ JSON (per result — for plugin/agent consumption):
 }
 ```
 
-The `files` manifest is assembled from the `file_hashes` table at query time. This allows an agent (or MCP plugin in v3) to know exactly which files are available in the skill dir — SKILL.md is always present, plus any scripts/, references/, docs/ files.
+The `files` list contains all indexed files in the skill dir, relative to the skill's directory. Assembled from the `file_hashes` table at query time. An agent (or MCP plugin in v3) can use these paths to load additional context beyond SKILL.md.
 
 ### Output Formats
 
