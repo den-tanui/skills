@@ -200,11 +200,30 @@ The scan is designed so the common case (nothing changed) is very fast: walk the
 
 ### Chunking Strategy
 
-1. Read `SKILL.md` → split YAML frontmatter (`---` delimited) from body.
-2. **Frontmatter** → one chunk, type `frontmatter`, content = full frontmatter text.
-3. **Body** → split by `##` headings → one chunk per h2 section. Chunk type = `section:<normalized-heading>` (lowercase, hyphenated). Original heading stored in `section_heading`.
-4. **Extra files** in skill dir → directories named `scripts/`, `references/`, `docs/`, etc. Each file gets its own chunk: type `reference_file` or `script_file`, `file_path` set to relative path.
-5. SHA256 hash computed per-file for change detection.
+Chunks are created by splitting files at **semantic boundaries** — never splitting a function, class, or logical block in half. Strategy depends on file type:
+
+**SKILL.md:**
+1. Split YAML frontmatter (`---` delimited) from body → one `frontmatter` chunk.
+2. Split body by `##` headings → one chunk per h2 section. Chunk type = `section:<normalized-heading>` (lowercase, hyphenated). Original heading stored in `section_heading`.
+
+**Code files** (`.sh`, `.py`, `.js`, `.ts`, `.go`, `.rs`, `.java`, etc.):
+- Split by top-level definitions: functions, classes, methods, types.
+- Detection via regex patterns per language (`^func `, `^def `, `^function `, `^class `, `^export (default )?(async )?(function|class)` etc.).
+- Each definition → one chunk, chunk type `script_file` or `reference_file`, with the function/class name in `section_heading`.
+- If no definitions found (or file is small): full file as one chunk.
+- If a file is very large with no definitions (>100 lines): fall back to line-based chunks of ~50 lines with 10-line overlap, but only after confirming no function boundaries exist.
+
+**Markdown/docs files** (`.md`, `.rst`, `.txt`):
+- Split by `##` headings (same as SKILL.md body).
+- Each section → one chunk with heading in `section_heading`.
+- No headings → full file as one chunk.
+
+**Config/data files** (`.json`, `.toml`, `.yaml`, `.csv`):
+- Full file as one chunk (typically small).
+
+**Key invariant:** A single function/class/block is never divided across chunks. If the chunking heuristic can't find safe boundaries, err on the side of larger chunks (full file) rather than splitting a definition.
+
+SHA256 hash is computed per-file (not per-chunk) for change detection. If a file's hash changes, all its chunks get re-computed and re-embedded.
 
 ## Systemd Timer Integration
 
