@@ -98,6 +98,7 @@ frontmatter = 0.20
 "section:trigger when" = 0.25
 "section:what it does" = 0.20
 "section:*" = 0.10
+"code_block:*" = 0.15
 reference_file = 0.10
 script_file = 0.05
 
@@ -203,8 +204,42 @@ The scan is designed so the common case (nothing changed) is very fast: walk the
 Chunks are created by splitting files at **semantic boundaries** — never splitting a function, class, or logical block in half. Strategy depends on file type:
 
 **SKILL.md:**
+
+Parsed with `tree-sitter-markdown` to get proper AST nodes for sections and code blocks.
+
 1. Split YAML frontmatter (`---` delimited) from body → one `frontmatter` chunk.
-2. Split body by `##` headings → one chunk per h2 section. Chunk type = `section:<normalized-heading>` (lowercase, hyphenated). Original heading stored in `section_heading`.
+2. Walk the markdown AST:
+   - Each `section` node (h2 heading `##`) is the top-level grouping.
+   - Within a section, `fenced_code_block` nodes are extracted as **separate chunks** with type `code_block:<language>` (e.g. `code_block:python`, `code_block:javascript`). The language tag is read from the code fence info string.
+   - Prose text between code blocks stays as the section chunk (type `section:<normalized-heading>`).
+   - Inline code spans (`` ` ``) stay with their surrounding prose — not split out.
+3. Each code block chunk includes the fenced code block markers and language tag (so the embedding captures the language context).
+
+Example — given a SKILL.md body section like:
+
+```markdown
+## Usage
+
+Call `validate()` to check your data.
+
+```python
+def validate(data):
+    return schema.parse(data)
+```
+
+For advanced cases, use the options parameter:
+
+```python
+validate(data, strict=True)
+```
+```
+
+This produces **three chunks** for the "Usage" section:
+- `section:usage` — prose: "Call `validate()`..." + "For advanced cases..." (inline code stays)
+- `code_block:python` — the first code block
+- `code_block:python` — the second code block
+
+This way, searching "validate with schema.parse" matches the Python code block directly, while searching "explain the validate function" matches the prose section. Both contribute to the skill's overall score via their respective weights.
 
 **Code files** (`.sh`, `.py`, `.js`, `.ts`, `.go`, `.rs`, `.java`, etc.):
 
@@ -253,14 +288,15 @@ for def_node in defs:
 | Extension | Language | Tree-sitter grammar | Top-level nodes captured |
 |-----------|----------|-------------------|--------------------------|
 | `.py` | Python | `python` | `function_definition`, `class_definition`, `decorated_definition` |
-| `.js`, `.jsx` | JavaScript | `javascript` | `function_declaration`, `class_declaration`, `method_definition`, `arrow_function`, `variable_declarator` (const fn =) |
-| `.ts`, `.tsx` | TypeScript | `typescript` | `function_declaration`, `class_declaration`, `interface_declaration`, `type_alias_declaration`, `method_definition` |
-| `.go` | Go | `go` | `function_declaration`, `method_declaration`, `type_declaration`, `struct_type` |
-| `.rs` | Rust | `rust` | `function_item`, `struct_item`, `impl_item`, `trait_item`, `enum_item`, `type_item`, `mod_item` |
+| `.js`, `.jsx` | JavaScript | `javascript` | `function_declaration`, `class_declaration`, `arrow_function`, `variable_declarator` (const fn =) |
+| `.ts`, `.tsx` | TypeScript | `typescript` | `function_declaration`, `class_declaration`, `interface_declaration`, `type_alias_declaration` |
+| `.go` | Go | `go` | `function_declaration`, `method_declaration`, `type_declaration` |
+| `.rs` | Rust | `rust` | `function_item`, `struct_item`, `impl_item`, `trait_item`, `enum_item` |
 | `.sh`, `.bash` | Bash | `bash` | `function_definition` |
 | `.java` | Java | `java` | `method_declaration`, `class_declaration`, `interface_declaration` |
 | `.c`, `.h` | C | `c` | `function_definition`, `struct_specifier` |
 | `.cpp`, `.hpp` | C++ | `cpp` | `function_definition`, `class_specifier`, `struct_specifier` |
+| `.md`, `.mdx` | Markdown | `markdown` | `section` (h2 heading), `fenced_code_block` (extracted as separate chunks) |
 
 **Files with no top-level definitions** (e.g., a flat config script): The entire file becomes one chunk.
 
@@ -294,16 +330,18 @@ chunker.py
 ├── Chunker class                  # entry point: chunk_file(path) → list[Chunk]
 │   ├── _load_grammar()            # load tree-sitter grammar for extension (cached)
 │   ├── _parse_tree()              # parse file → CST
-│   └── _extract_top_level_defs()  # walk AST, extract definition nodes
+│   └── _extract_defs()            # walk AST, extract definition/code-block nodes
 ├── DEFINITION_QUERIES             # tree-sitter S-expressions per language
 │   ├── python: "(function_definition) @def (class_definition) @def ..."
 │   ├── javascript: "(function_declaration) @def (class_declaration) @def ..."
-│   └── ...
-├── _line_fallback()               # line-based with overlap for unknown languages
-└── _extract_name()                # get function/class name from AST node
+│   └── markdown: "(section [  (#heading) @header (fenced_code_block) @code ... ]) @sec"
+├── _code_block_fallback()          # regex-based code block extraction if tree-sitter-markdown unavailable
+└── _line_fallback()               # line-based with overlap for unknown code languages
 ```
 
 Tree-sitter grammars are loaded lazily and cached in a dict keyed by language name. A scan of 100 skill dirs might touch 5-6 languages — only those grammars get loaded.
+
+For SKILL.md files, the markdown grammar provides `fenced_code_block` nodes with their language tag. Embedded code blocks are extracted as separate chunks. For each code block whose language has a tree-sitter grammar available (e.g., a ````python` block inside a SKILL.md), we optionally parse it further with tree-sitter to split into function-level chunks. This is deferred to v2 — v1 treats each fenced code block as one chunk.
 
 ## Systemd Timer Integration
 
