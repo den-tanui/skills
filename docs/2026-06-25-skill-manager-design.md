@@ -309,10 +309,12 @@ for def_node in defs:
 
 **Fallback for unsupported languages:** Use line-based chunks of ~50 lines with 10-line overlap (only for files >100 lines; smaller files stay as one chunk). This covers `.rb`, `.php`, `.swift`, `.kt`, `.lua`, and any other uncommon languages.
 
-**Markdown/docs files** (`.md`, `.rst`, `.txt`):
-- Split by `##` headings (same as SKILL.md body).
-- Each section → one chunk with heading in `section_heading`.
-- No headings → full file as one chunk.
+**Markdown/docs files** (`.md`, `.mdx`, `.rst`):
+- Parsed with `tree-sitter-markdown` — same approach as SKILL.md:
+  - Split by `##` headings → one chunk per section.
+  - Within each section, extract fenced code blocks as separate `code_block:<language>` chunks.
+  - Inline code stays with prose.
+- No headings → full file as one chunk (still extracting code blocks).
 
 **Config/data files** (`.json`, `.toml`, `.yaml`, `.csv`):
 - Full file as one chunk (typically small).
