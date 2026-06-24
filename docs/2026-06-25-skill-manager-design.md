@@ -354,12 +354,35 @@ The `files` list contains all indexed files in the skill dir, relative to the sk
 | **CLI** | Subprocess calls to CLI entry point. Assert exit codes, stdout, json output. |
 | **sqlite-vec** | Write known vectors, verify cosine similarity, test edge cases (zero vectors, empty DB). |
 
-## v2 Preview (not in scope for v1)
+## v2/v3 Preview (not in scope for v1)
 
+### v2 — Remote Registry + fzf
 - Remote registry integration (skillsmp.com API)
 - `skill-manager install <name>` — download and install remote skills
 - `skill-manager update [name]` — update installed skills from source
 - `skill-manager publish` — publish a skill to the registry
-- OpenCode MCP plugin (TypeScript) — injects matching skills into active sessions
-- fzf-based interactive search
+- fzf-based interactive search (`skill-manager search --fzf`)
+
+### v3 — OpenCode MCP Plugin (TypeScript)
+The plugin runs as an MCP server that shells out to `skill-manager search --json`.
+
+When injecting a skill into a running session, the plugin:
+1. Calls `skill-manager search <context> --json --top 1` to find the best-matching skill
+2. Reads the skill's SKILL.md content from disk
+3. **Prepends a metadata block** to the injected content with the full info from the search result (name, description, score, source_dir, files list with abs paths), then appends the SKILL.md body
+4. The injected block looks like:
+
+```
+## skill:react-form-validation (score: 0.87)
+- source: ~/.config/opencode/skills
+- description: Validates React forms with Zod
+- files: SKILL.md, scripts/setup.sh, references/api-patterns.md
+
+<SKILL.md content>
+```
+
+The full `files` list (with absolute paths resolved from `source_dir`) lets the agent also load any extra scripts, references, or docs into context as needed.
+
+### Future considerations
 - Security scanning for malicious skills (content review, sandbox checks)
+- Skill dependency resolution (a skill that depends on another skill)
