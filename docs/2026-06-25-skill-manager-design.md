@@ -207,11 +207,49 @@ Chunks are created by splitting files at **semantic boundaries** — never split
 2. Split body by `##` headings → one chunk per h2 section. Chunk type = `section:<normalized-heading>` (lowercase, hyphenated). Original heading stored in `section_heading`.
 
 **Code files** (`.sh`, `.py`, `.js`, `.ts`, `.go`, `.rs`, `.java`, etc.):
-- Split by top-level definitions: functions, classes, methods, types.
-- Detection via regex patterns per language (`^func `, `^def `, `^function `, `^class `, `^export (default )?(async )?(function|class)` etc.).
-- Each definition → one chunk, chunk type `script_file` or `reference_file`, with the function/class name in `section_heading`.
-- If no definitions found (or file is small): full file as one chunk.
-- If a file is very large with no definitions (>100 lines): fall back to line-based chunks of ~50 lines with 10-line overlap, but only after confirming no function boundaries exist.
+
+Chunked by detecting top-level definition boundaries using two strategies combined: **regex definition patterns** + **scope depth tracking**. No full AST parsers — just line-by-line scanning.
+
+**Phase 1 — Find definition start lines:**
+Scan each line for language-specific patterns that signal the start of a function, class, or method:
+
+| Language | Patterns |
+|----------|----------|
+| Python | `^def `, `^class `, `^async def ` (also collects preceding `@decorator` lines) |
+| JS/TS | `^function `, `^class `, `^const \w+ = .*=>`, `^const \w+ = function`, `^export (default )?(async )?(function|class\|const)`, interface/type exports |
+| Go | `^func `, `^type \w+ (struct|interface)`, `^type \w+ ` (type aliases) |
+| Rust | `^fn `, `^struct `, `^impl` , `^trait `, `^enum `, `^mod `, `^type `, `^pub (fn|struct|impl|trait|enum|mod|type)` |
+| Shell | `^\w+\s*\(\s*\)\s*{` , `^function \w+` |
+| Java | `^public|private|protected|static .*(function|class|interface|enum)`, `^class `, `^interface ` |
+| C/C++ | `^\w+ \w+\(` (return_type name(),  heuristics) |
+
+**Phase 2 — Track scope to find definition end:**
+Once a definition start is found, we track scope depth line-by-line to know where the definition body ends:
+
+- **Brace languages** (JS, TS, Go, Rust, Java, C, C++): Count `{` (+1) and `}` (-1). When the counter returns to the level it was at when the definition started, the definition is complete. Ignore braces inside strings (`'...'`, `"..."`) and comments (`//`, `/* */`) by tracking string/comment state.
+- **Indentation languages** (Python, Ruby): Track the indent level of the definition line. The body continues while subsequent lines have higher indentation. Blank lines and lines at the same indent level end the block. Decorator lines (`@`) before a definition are folded into its chunk.
+- **Keyword-terminated** (Bash): The body of a shell function ends at the matching `}`. Shell functions don't nest (Bash doesn't support nested functions), so simple brace counting works.
+
+**Chunk assembly:**
+```
+defs = find_definition_starts(lines, language)
+chunks = []
+
+for i, (start_line, name) in enumerate(defs):
+    end_line = find_definition_end(start_line, lines, language)
+    next_start = defs[i+1].start_line if i+1 < len(defs) else len(lines)
+    
+    // Take the definition body up to either its logical end
+    // or the next definition, whichever comes first
+    chunk_end = min(end_line, next_start)
+    content = lines[start_line:chunk_end]
+    chunks.append({name, content, type})
+```
+
+**Edge cases handled:**
+- **Nested functions/classes** (e.g., inner function in JS/Python): The scope tracker uses a stack of brace/indent depths. An inner function is included in the outer chunk (not split out separately). Only top-level definitions become separate chunks.
+- **Comments before a definition** (docstrings, JSDoc): Lines immediately preceding a definition that look like comments (`#`, `//`, `/*`) are folded into that definition's chunk.
+- **No definitions found**: If the file has no detectable definitions, fall back to line-based chunking with overlap: chunks of ~50 lines with 10-line overlap, but only for files >100 lines. Smaller files stay as one chunk.
 
 **Markdown/docs files** (`.md`, `.rst`, `.txt`):
 - Split by `##` headings (same as SKILL.md body).
@@ -224,6 +262,44 @@ Chunks are created by splitting files at **semantic boundaries** — never split
 **Key invariant:** A single function/class/block is never divided across chunks. If the chunking heuristic can't find safe boundaries, err on the side of larger chunks (full file) rather than splitting a definition.
 
 SHA256 hash is computed per-file (not per-chunk) for change detection. If a file's hash changes, all its chunks get re-computed and re-embedded.
+
+### Chunker Implementation
+
+The chunker lives in a single module `skill_manager/chunker.py` with this structure:
+
+```
+chunker.py
+├── Chunker class                  # entry point: chunk_file(path) → list[Chunk]
+├── CodeChunker                    # handles code files
+│   ├── _find_definitions()        # Phase 1: regex scan for definition starts
+│   ├── _track_scope()             # Phase 2: brace/indent depth tracking
+│   └── _scope_tracker.py          # line-by-line scope state machine
+│       ├── BraceScopeTracker      # for { } languages
+│       ├── IndentScopeTracker     # for Python, Ruby
+│       └── BashScopeTracker       # for shell scripts
+├── MarkdownChunker                # handles .md, .rst — split by headings
+└── _line_fallback()               # line-based with overlap (safety net)
+```
+
+The scope trackers are lightweight state machines that scan a list of lines:
+
+```
+BraceScopeTracker(lines, start_idx):
+  depth = 0
+  in_string = False
+  in_line_comment = False
+  in_block_comment = False
+  for i from start_idx to len(lines):
+    update string/comment state (track quotes, //, /* */)
+    if not in_string and not in_comment:
+      for char in lines[i]:
+        if char == '{': depth += 1
+        if char == '}': depth -= 1
+    if depth == 0:
+      return i  # end of definition
+```
+
+No external dependencies — just regex + line scanning. Works for the common patterns found in skill scripts.
 
 ## Systemd Timer Integration
 
