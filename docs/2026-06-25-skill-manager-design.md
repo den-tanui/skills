@@ -208,48 +208,70 @@ Chunks are created by splitting files at **semantic boundaries** — never split
 
 **Code files** (`.sh`, `.py`, `.js`, `.ts`, `.go`, `.rs`, `.java`, etc.):
 
-Chunked by detecting top-level definition boundaries using two strategies combined: **regex definition patterns** + **scope depth tracking**. No full AST parsers — just line-by-line scanning.
+Chunked by AST node boundaries using **tree-sitter**. This gives us exact start/end positions for every function, class, method, and type definition — correctly handling nested scopes, strings with braces, comments, and all edge cases.
 
-**Phase 1 — Find definition start lines:**
-Scan each line for language-specific patterns that signal the start of a function, class, or method:
+**Dependencies:**
+- `tree-sitter` — Python bindings for tree-sitter
+- `tree_sitter_languages` — pre-compiled grammars for ~50 languages
 
-| Language | Patterns |
-|----------|----------|
-| Python | `^def `, `^class `, `^async def ` (also collects preceding `@decorator` lines) |
-| JS/TS | `^function `, `^class `, `^const \w+ = .*=>`, `^const \w+ = function`, `^export (default )?(async )?(function|class\|const)`, interface/type exports |
-| Go | `^func `, `^type \w+ (struct|interface)`, `^type \w+ ` (type aliases) |
-| Rust | `^fn `, `^struct `, `^impl` , `^trait `, `^enum `, `^mod `, `^type `, `^pub (fn|struct|impl|trait|enum|mod|type)` |
-| Shell | `^\w+\s*\(\s*\)\s*{` , `^function \w+` |
-| Java | `^public|private|protected|static .*(function|class|interface|enum)`, `^class `, `^interface ` |
-| C/C++ | `^\w+ \w+\(` (return_type name(),  heuristics) |
+Grammars are loaded on demand per file extension and cached in memory for the duration of the scan.
 
-**Phase 2 — Track scope to find definition end:**
-Once a definition start is found, we track scope depth line-by-line to know where the definition body ends:
+**Chunking algorithm:**
 
-- **Brace languages** (JS, TS, Go, Rust, Java, C, C++): Count `{` (+1) and `}` (-1). When the counter returns to the level it was at when the definition started, the definition is complete. Ignore braces inside strings (`'...'`, `"..."`) and comments (`//`, `/* */`) by tracking string/comment state.
-- **Indentation languages** (Python, Ruby): Track the indent level of the definition line. The body continues while subsequent lines have higher indentation. Blank lines and lines at the same indent level end the block. Decorator lines (`@`) before a definition are folded into its chunk.
-- **Keyword-terminated** (Bash): The body of a shell function ends at the matching `}`. Shell functions don't nest (Bash doesn't support nested functions), so simple brace counting works.
-
-**Chunk assembly:**
 ```
-defs = find_definition_starts(lines, language)
-chunks = []
+parser = Language(extension)  # e.g. Language("python"), Language("javascript")
+tree = parser.parse(bytes(content, "utf8"))
+root = tree.root_node
 
-for i, (start_line, name) in enumerate(defs):
-    end_line = find_definition_end(start_line, lines, language)
-    next_start = defs[i+1].start_line if i+1 < len(defs) else len(lines)
-    
-    // Take the definition body up to either its logical end
-    // or the next definition, whichever comes first
-    chunk_end = min(end_line, next_start)
-    content = lines[start_line:chunk_end]
-    chunks.append({name, content, type})
+defs = find_top_level_definitions(root_node)
+# Queries for each language target: function_definition, class_definition,
+# method_definition, interface_declaration, type_alias, etc.
+
+for def_node in defs:
+    name = extract_definition_name(def_node)     # e.g. "validateForm"
+    start_line = def_node.start_point[0]
+    end_line = def_node.end_point[0]
+    content = lines[start_line : end_line + 1]
+
+    # Include preceding comments/docstrings by checking previous sibling nodes
+    prev = def_node.prev_sibling or def_node.parent
+    preceding = extract_preceding_doc_comment(prev, def_node)
+    if preceding:
+        content = preceding + content
+
+    chunks.append({
+        "name": name,
+        "content": content,
+        "type": "script_file" or "reference_file",
+        "start_line": start_line,
+        "end_line": end_line,
+    })
 ```
 
-**Edge cases handled:**
-- **Nested functions/classes** (e.g., inner function in JS/Python): The scope tracker uses a stack of brace/indent depths. An inner function is included in the outer chunk (not split out separately). Only top-level definitions become separate chunks.
-- **Comments before a definition** (docstrings, JSDoc): Lines immediately preceding a definition that look like comments (`#`, `//`, `/*`) are folded into that definition's chunk.
-- **No definitions found**: If the file has no detectable definitions, fall back to line-based chunking with overlap: chunks of ~50 lines with 10-line overlap, but only for files >100 lines. Smaller files stay as one chunk.
+**Supported languages (v1):**
+
+| Extension | Language | Tree-sitter grammar | Top-level nodes captured |
+|-----------|----------|-------------------|--------------------------|
+| `.py` | Python | `python` | `function_definition`, `class_definition`, `decorated_definition` |
+| `.js`, `.jsx` | JavaScript | `javascript` | `function_declaration`, `class_declaration`, `method_definition`, `arrow_function`, `variable_declarator` (const fn =) |
+| `.ts`, `.tsx` | TypeScript | `typescript` | `function_declaration`, `class_declaration`, `interface_declaration`, `type_alias_declaration`, `method_definition` |
+| `.go` | Go | `go` | `function_declaration`, `method_declaration`, `type_declaration`, `struct_type` |
+| `.rs` | Rust | `rust` | `function_item`, `struct_item`, `impl_item`, `trait_item`, `enum_item`, `type_item`, `mod_item` |
+| `.sh`, `.bash` | Bash | `bash` | `function_definition` |
+| `.java` | Java | `java` | `method_declaration`, `class_declaration`, `interface_declaration` |
+| `.c`, `.h` | C | `c` | `function_definition`, `struct_specifier` |
+| `.cpp`, `.hpp` | C++ | `cpp` | `function_definition`, `class_specifier`, `struct_specifier` |
+
+**Files with no top-level definitions** (e.g., a flat config script): The entire file becomes one chunk.
+
+**Edge cases handled by tree-sitter natively:**
+- Nested functions/classes → only top-level defs become separate chunks
+- Braces inside strings → parsed correctly as string nodes, not scope tokens
+- Comments and docstrings → included in preceding chunk
+- Template literals (JS) → parsed correctly
+- Decorators (Python) → captured via `decorated_definition` node as part of the definition
+
+**Fallback for unsupported languages:** Use line-based chunks of ~50 lines with 10-line overlap (only for files >100 lines; smaller files stay as one chunk). This covers `.rb`, `.php`, `.swift`, `.kt`, `.lua`, and any other uncommon languages.
 
 **Markdown/docs files** (`.md`, `.rst`, `.txt`):
 - Split by `##` headings (same as SKILL.md body).
@@ -265,41 +287,23 @@ SHA256 hash is computed per-file (not per-chunk) for change detection. If a file
 
 ### Chunker Implementation
 
-The chunker lives in a single module `skill_manager/chunker.py` with this structure:
+The chunker lives in a single module `skill_manager/chunker.py`:
 
 ```
 chunker.py
 ├── Chunker class                  # entry point: chunk_file(path) → list[Chunk]
-├── CodeChunker                    # handles code files
-│   ├── _find_definitions()        # Phase 1: regex scan for definition starts
-│   ├── _track_scope()             # Phase 2: brace/indent depth tracking
-│   └── _scope_tracker.py          # line-by-line scope state machine
-│       ├── BraceScopeTracker      # for { } languages
-│       ├── IndentScopeTracker     # for Python, Ruby
-│       └── BashScopeTracker       # for shell scripts
-├── MarkdownChunker                # handles .md, .rst — split by headings
-└── _line_fallback()               # line-based with overlap (safety net)
+│   ├── _load_grammar()            # load tree-sitter grammar for extension (cached)
+│   ├── _parse_tree()              # parse file → CST
+│   └── _extract_top_level_defs()  # walk AST, extract definition nodes
+├── DEFINITION_QUERIES             # tree-sitter S-expressions per language
+│   ├── python: "(function_definition) @def (class_definition) @def ..."
+│   ├── javascript: "(function_declaration) @def (class_declaration) @def ..."
+│   └── ...
+├── _line_fallback()               # line-based with overlap for unknown languages
+└── _extract_name()                # get function/class name from AST node
 ```
 
-The scope trackers are lightweight state machines that scan a list of lines:
-
-```
-BraceScopeTracker(lines, start_idx):
-  depth = 0
-  in_string = False
-  in_line_comment = False
-  in_block_comment = False
-  for i from start_idx to len(lines):
-    update string/comment state (track quotes, //, /* */)
-    if not in_string and not in_comment:
-      for char in lines[i]:
-        if char == '{': depth += 1
-        if char == '}': depth -= 1
-    if depth == 0:
-      return i  # end of definition
-```
-
-No external dependencies — just regex + line scanning. Works for the common patterns found in skill scripts.
+Tree-sitter grammars are loaded lazily and cached in a dict keyed by language name. A scan of 100 skill dirs might touch 5-6 languages — only those grammars get loaded.
 
 ## Systemd Timer Integration
 
