@@ -24,6 +24,10 @@ Convert fzf workflows into portable Bash scripts using numbered menus and read i
 
 Scaffold a Go TUI application with clean layered architecture — Bubbletea + tview, config, persistence, plugin system, themes, and CI/CD. Use when starting a new Go TUI project, scaffolding a Bubbletea app, or creating a terminal UI with separation of concerns.
 
+### [herdr](herdr-agent-skill/SKILL.md)
+
+Control herdr from inside it. Manage workspaces and tabs, split panes, spawn agents, read output, and wait for state changes — all via CLI commands that talk to the running herdr instance over a local unix socket. Use when running inside herdr (HERDR_ENV=1).
+
 ### [herdr-cli](herdr-cli/SKILL.md)
 
 Reference for the Herdr CLI — every command, flag, and output format. Use this skill whenever the user asks how to do something with the herdr command: construct a specific command invocation, control workspaces/tabs/panes/agents programmatically, script Herdr automation, parse JSON output, install or link plugins, understand available flags, or figure out the right command for a task. Also use when the user wants to pipe herdr output, filter workspace/pane/agent lists, invoke plugin actions from scripts, send keys or text to panes, create worktrees, wait for agent status, attach the terminal directly, or configure integrations. Do NOT use this skill for plugin development questions — that is the herdr-plugin-dev skill's domain.
@@ -56,4 +60,4 @@ Port tmux plugins to Herdr plugins. Use this skill whenever the user wants to co
 
 *Generated on 2026-07-05*
 
-*Total skills: 12*
+*Total skills: 13*
