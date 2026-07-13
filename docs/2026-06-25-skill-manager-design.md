@@ -473,8 +473,7 @@ The `files` list contains all indexed files in the skill dir, relative to the sk
 | `skill-manager symlink <name> [target] --force` | Symlink skill dir to `target/<skill-name>`. `--force` overwrites. |
 | `skill-manager edit <name>` | Open the skill's SKILL.md in `$EDITOR`. |
 | `skill-manager delete <name>` | Remove skill from registry (does not delete files on disk). |
-| `skill-manager check [name]` | **Three checks:** 1) verify skill files exist + not modified (via hash comparison), 2) re-run security checks (v4), 3) check for updates from source repo (v2). Without name, checks all skills. |
-| `skill-manager check --dir <path>` | Validate a skill directory's structure/frontmatter without registering it. Exit 0 if valid, non-zero with errors if not. |
+| `skill-manager check [--files] [--security] [--updates] [name\|--dir <path>]` | Validate a skill or all skills. `--files`: verify files exist + hash integrity (default: on). `--security`: re-run security checks (stub until v4, default: on). `--updates`: check for updates from source repo (default: on for installed skills). Last arg is skill name, or `--dir <path>` to check any dir without registering. Without name: runs against all registered skills. |
 | | |
 | **Remote & Publish (v2)** | |
 | `skill-manager install <repo> [skill-name]` | Install a skill from a GitHub repo. If `skill-name` provided, install that specific skill. If omitted, scan the repo and list available skills (dirs with SKILL.md). |
