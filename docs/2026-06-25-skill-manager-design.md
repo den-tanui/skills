@@ -106,6 +106,14 @@ script_file = 0.05
 model = "all-MiniLM-L6-v2"
 batch_size = 32
 device = "cpu"
+
+[scan]
+interval_minutes = 15
+
+[publish]              # v2: target repo for publishing skills
+# repo = "github.com/my-user/my-skills"
+# branch = "main"
+# local_checkout = "~/.local/share/skill-manager/publish-repo"
 ```
 
 ## Data Model — SQLite Schema
@@ -443,23 +451,35 @@ The `files` list contains all indexed files in the skill dir, relative to the sk
 
 | Command | Description |
 |---------|-------------|
+| **Config & Setup** | |
 | `skill-manager add <dir> [--label]` | Add a directory to tracked dirs and immediately scan it. `--label` sets an optional nickname. |
 | `skill-manager remove <dir>` | Remove a directory from tracking. Does not delete files, just removes from index. |
-| `skill-manager list [--json]` | List all indexed skills. Default output: grouped by source_dir, showing skill name + description per group. `--json`: flat array with `{skill_name, description, source_dir, abs_path, commit_hash, source_url, install_method}` per entry. |
-| `skill-manager scan` | Run incremental scan: walk tracked dirs, hash all files, compare against DB, re-embed changed/new files, prune removed. Safe to run repeatedly. |
-| `skill-manager scan --full` | Full re-index: force re-hash + re-embed all files regardless of hash state. |
-| `skill-manager search <query> [--json] [--section] [--dir] [--top N]` | Semantic search. Reads from DB only — no indexing work. `--json` for programmatic use. `--section` filters by chunk type. `--dir` scopes to a source dir. `--top` limits results (default 10). |
-| `skill-manager check [name]` | Check a skill for updates: for installed skills (v2), compares `source_commit_hash` against remote HEAD. For discovered skills: validate dir structure + frontmatter only. |
-| `skill-manager check --dir <path>` | Validate a skill directory's structure/frontmatter without registering it. Exit 0 if valid, non-zero with errors if not. |
-| `skill-manager copy <name> [target] --force` | Copy skill dir to `target/<skill-name>` (default: cwd). `--force` overwrites existing. |
-| `skill-manager symlink <name> [target] --force` | Symlink skill dir to `target/<skill-name>` (default: cwd). `--force` overwrites existing. |
-| `skill-manager edit <name>` | Open the skill's SKILL.md in `$EDITOR`. |
-| `skill-manager delete <name>` | Remove skill from registry (does not delete files on disk). |
 | `skill-manager install-timer [--interval 15]` | Generate and install systemd user timer + service units for periodic scan. |
 | `skill-manager remove-timer` | Remove the installed systemd timer and service units. |
-| `skill-manager status [--json]` | Index health: total skills, chunks, last scan time, tracked dirs, parse error count. |
 | `skill-manager config` | Print current config (with sensitive defaults resolved). |
 | `skill-manager config --show-paths` | Print resolved paths for config, DB, cache, model dirs. |
+| | |
+| **Indexing** | |
+| `skill-manager scan` | Run incremental scan: walk tracked dirs, hash all files, compare against DB, re-embed changed/new files, prune removed. Safe to run repeatedly. |
+| `skill-manager scan --full` | Full re-index: force re-hash + re-embed all files regardless of hash state. |
+| `skill-manager status [--json]` | Index health: total skills, chunks, last scan time, tracked dirs, parse error count. |
+| | |
+| **Search & Browse** | |
+| `skill-manager search <query> [--json] [--section] [--dir] [--top N]` | Semantic search. Reads from DB only — no indexing work. `--json` for programmatic use. |
+| `skill-manager list [--json]` | List all indexed skills. Default: grouped by source_dir. `--json`: flat array with full fields. |
+| | |
+| **Local Management** | |
+| `skill-manager copy <name> [target] --force` | Copy skill dir to `target/<skill-name>` (default: cwd). `--force` overwrites. |
+| `skill-manager symlink <name> [target] --force` | Symlink skill dir to `target/<skill-name>`. `--force` overwrites. |
+| `skill-manager edit <name>` | Open the skill's SKILL.md in `$EDITOR`. |
+| `skill-manager delete <name>` | Remove skill from registry (does not delete files on disk). |
+| `skill-manager check [name]` | **Three checks:** 1) verify skill files exist + not modified (via hash comparison), 2) re-run security checks (v4), 3) check for updates from source repo (v2). Without name, checks all skills. |
+| `skill-manager check --dir <path>` | Validate a skill directory's structure/frontmatter without registering it. Exit 0 if valid, non-zero with errors if not. |
+| | |
+| **Remote & Publish (v2)** | |
+| `skill-manager install <repo> [skill-name]` | Install a skill from a GitHub repo. If `skill-name` provided, install that specific skill. If omitted, scan the repo and list available skills (dirs with SKILL.md). |
+| `skill-manager publish [skill-name]` | Publish a local skill to the configured publish repo. Without arguments, show an interactive checklist of all local skills with ones already in the publish repo pre-checked. |
+| `skill-manager update [name]` | Update installed skills from their source repo (compares stored `source_commit_hash`). |
 
 ## Deduplication
 
@@ -493,35 +513,67 @@ The `files` list contains all indexed files in the skill dir, relative to the sk
 | **CLI** | Subprocess calls to CLI entry point. Assert exit codes, stdout, json output. |
 | **sqlite-vec** | Write known vectors, verify cosine similarity, test edge cases (zero vectors, empty DB). |
 
-## v2/v3 Preview (not in scope for v1)
+## v2/v3/v4 Preview (not in scope for v1)
 
-### v2 — Remote Registry + fzf
-- Remote registry integration (skillsmp.com API)
-- `skill-manager install <name>` — download and install remote skills
-- `skill-manager update [name]` — update installed skills from source
-- `skill-manager publish` — publish a skill to the registry
-- fzf-based interactive search (`skill-manager search --fzf`)
+### v2 — Remote Registry + Publishing + fzf
 
-### v3 — OpenCode MCP Plugin (TypeScript)
-The plugin runs as an MCP server that shells out to `skill-manager search --json`.
+**Config:** User configures a publish repo in `config.toml`:
+```toml
+[publish]
+repo = "github.com/my-user/my-skills"
+branch = "main"
+local_checkout = "~/.local/share/skill-manager/publish-repo"
+```
 
-When injecting a skill into a running session, the plugin:
-1. Calls `skill-manager search <context> --json --top 1` to find the best-matching skill
-2. Reads the skill's SKILL.md content from disk
-3. **Prepends a metadata block** to the injected content with the full info from the search result (name, description, score, source_dir, files list with abs paths), then appends the SKILL.md body
-4. The injected block looks like:
+**Install from GitHub:**
+- `skill-manager install <repo> [skill-name]`
+- Clones the repo to a temp dir, scans for dirs containing `SKILL.md`
+- If `skill-name` is provided: installs that specific skill into the global install store
+- If omitted: lists all available skills in the repo (dir name + description from frontmatter)
 
+**Publish to GitHub:**
+- `skill-manager publish [skill-name]`
+- Without arguments: shows an interactive checklist of all local skills, with ones already in the publish repo pre-checked. User selects which to publish.
+- With a skill name: copies the skill dir into a local checkout of the publish repo, commits, and pushes.
+- Tracks `source_commit_hash` so published skills can be updated later.
+
+**fzf:**
+- `skill-manager search --fzf` — interactive fzf UI wrapping the search command
+
+### v3 — OpenCode Plugin (TypeScript)
+
+The plugin is more than a passive MCP server — it hooks into OpenCode's session context assembly to **automatically inject** relevant skills.
+
+**Two integration points:**
+
+1. **MCP server** — provides tools for the agent to call explicitly:
+   - `search_skills(query)` → returns matching skills with file manifest
+   - `get_skill(skill_name)` → returns full skill content + metadata
+   - `inject_skill(skill_name)` → explicitly inject a skill into the current context
+
+2. **Context injection hook** — automatically triggered during session setup or topic shifts:
+   - Listens for context/topic signals (user request, file being edited, etc.)
+   - Calls `skill-manager search "<current context>" --json --top 3`
+   - For the best match(es), prepends a metadata block + SKILL.md content into the agent's context
+   - The metadata block includes the full file manifest so the agent knows what extra files are available
+
+**Injected format:**
 ```
 ## skill:react-form-validation (score: 0.87)
 - source: ~/.config/opencode/skills
 - description: Validates React forms with Zod
-- files: SKILL.md, scripts/setup.sh, references/api-patterns.md
+- files:
+  - SKILL.md
+  - scripts/setup.sh
+  - references/api-patterns.md
 
 <SKILL.md content>
 ```
 
-The full `files` list (with absolute paths resolved from `source_dir`) lets the agent also load any extra scripts, references, or docs into context as needed.
+The agent can then use the file paths to load additional context as needed.
 
-### Future considerations
-- Security scanning for malicious skills (content review, sandbox checks)
-- Skill dependency resolution (a skill that depends on another skill)
+### v4 — Security Scanning (future)
+- Reuse tree-sitter parsing infrastructure to analyze code for malicious patterns
+- Sandbox checks on installed skills
+- Integrated into `skill-manager check` as a re-runnable step
+- Skill dependency resolution
