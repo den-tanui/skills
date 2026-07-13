@@ -541,9 +541,9 @@ local_checkout = "~/.local/share/skill-manager/publish-repo"
 
 ### v3 — OpenCode Plugin (TypeScript)
 
-The plugin is more than a passive MCP server — it hooks into OpenCode's session context assembly to **automatically inject** relevant skills.
+The plugin is more than a passive MCP server — it hooks into OpenCode's session context assembly to **automatically inject** relevant skills, including self-describing skills that teach the agent how to use skill-manager itself.
 
-**Two integration points:**
+**Three integration points:**
 
 1. **MCP server** — provides tools for the agent to call explicitly:
    - `search_skills(query)` → returns matching skills with file manifest
@@ -570,6 +570,14 @@ The plugin is more than a passive MCP server — it hooks into OpenCode's sessio
 ```
 
 The agent can then use the file paths to load additional context as needed.
+
+3. **Self-describing meta-skills** — the plugin bundles built-in skills that teach agents how to use skill-manager:
+
+   - **`skill-manager-usage`** — describes all CLI commands, flags, and workflows for skill-manager. Automatically injected at session start so the agent knows what tools are available without being told.
+   - **`skill-manager-hooks`** — describes the context injection hook behavior so agents understand why skills appear in their context and how to leverage them.
+   - **User-triggered commands** — the plugin can register custom OpenCode commands (e.g., `/search-skills`, `/install-skill`, `/publish-skill`) that the user can invoke from the chat input, which the agent can also call programmatically.
+
+These meta-skills live in the plugin's own skill directory and are indexed alongside user skills for consistent search. A search for "how to install a skill" will find the `skill-manager-usage` meta-skill alongside any other relevant results.
 
 ### v4 — Security Scanning (future)
 - Reuse tree-sitter parsing infrastructure to analyze code for malicious patterns
