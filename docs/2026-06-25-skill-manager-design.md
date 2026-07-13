@@ -503,14 +503,177 @@ The `files` list contains all indexed files in the skill dir, relative to the sk
 
 ## Testing Strategy
 
-| Layer | Approach |
-|-------|----------|
-| **Parser** | Unit tests with fixture SKILL.md files (valid frontmatter, malformed, no frontmatter, various heading structures). |
-| **Scanner** | Temp directory integration tests for incremental indexing, dedup, dir removal detection. |
-| **Embedder** | Mock sentence-transformers for unit tests. One acceptance test with real model. |
-| **Search** | Index known fixture skills, assert ranking, test weight effects, test dedup. |
-| **CLI** | Subprocess calls to CLI entry point. Assert exit codes, stdout, json output. |
-| **sqlite-vec** | Write known vectors, verify cosine similarity, test edge cases (zero vectors, empty DB). |
+### Framework & Tooling
+
+- **Test runner:** pytest with `--cov` for coverage, `-x` for fail-fast
+- **Fixtures:** `tests/fixtures/` directory with miniature skill trees
+- **Mocking:** `unittest.mock` for sentence-transformers; real model in acceptance tests only
+- **DB tests:** in-memory SQLite + sqlite-vec for speed; temp file for persistence tests
+- **CI:** runs on every push via GitHub Actions (pytest, lint, typecheck)
+
+### Fixture Layout
+
+```
+tests/fixtures/
+├── valid-skill/
+│   ├── SKILL.md              # valid frontmatter + 3 h2 sections + 2 code blocks
+│   ├── scripts/
+│   │   └── setup.sh          # bash functions to test code chunking
+│   └── references/
+│       └── api-patterns.md   # markdown with headings + code blocks
+├── no-frontmatter/
+│   └── SKILL.md              # no YAML frontmatter — tests error handling
+├── malformed-frontmatter/
+│   └── SKILL.md              # invalid YAML — tests graceful skip
+├── code-files/
+│   ├── SKILL.md              # basic skill with no code blocks
+│   ├── sample.py             # 3 functions + 1 class — tests Python chunking
+│   ├── sample.js             # arrow functions + classes — tests JS chunking
+│   ├── sample.go             # func + struct + method — tests Go chunking
+│   ├── nested.py             # outer function with inner function — tests nesting
+│   └── sample.sh             # bash functions — tests shell chunking
+├── large-no-defs/
+│   ├── SKILL.md
+│   └── data.csv              # 200 lines, no definitions — tests line fallback
+└── empty-dir/
+    └── SKILL.md              # valid frontmatter, empty body
+```
+
+### Test Layers
+
+#### 1. Parser / Chunker (`tests/test_chunker.py`)
+
+| Test | What it verifies |
+|------|-----------------|
+| `test_frontmatter_extraction` | Parses valid YAML frontmatter; returns name, description |
+| `test_no_frontmatter` | Returns no frontmatter chunk, logs warning |
+| `test_malformed_frontmatter` | Returns error, skips file gracefully |
+| `test_markdown_section_splitting` | Each `##` heading becomes one `section:*` chunk |
+| `test_code_block_extraction` | Fenced code blocks are separate `code_block:<lang>` chunks |
+| `test_inline_code_stays_in_prose` | `` `code` `` spans remain in their section chunk |
+| `test_python_function_boundaries` | Each top-level `def` / `class` is its own chunk |
+| `test_js_function_boundaries` | `function`, `class`, `const fn = () =>` each its own chunk |
+| `test_go_function_boundaries` | `func` each its own chunk |
+| `test_nested_functions_not_split` | Inner function stays inside outer chunk |
+| `test_decorators_included` | `@decorator` lines folded into preceding Python chunk |
+| `test_comments_before_definition` | Docstrings/comments above a def are included in that chunk |
+| `test_unsupported_language_fallback` | Unknown extension with >100 lines → line-based chunks |
+| `test_small_files_one_chunk` | Files <100 lines with no defs → single chunk |
+| `test_empty_file` | Empty file → no chunks (skipped) |
+| `test_chunk_metadata` | Every chunk has correct `chunk_type`, `file_path`, `section_heading` |
+
+#### 2. Scanner / Indexer (`tests/test_scanner.py`)
+
+| Test | What it verifies |
+|------|-----------------|
+| `test_initial_scan_populates_db` | After `scan`, all skills in tracked dirs are in `skills` table |
+| `test_incremental_scan_no_changes` | Second `scan` with no changes → no new embeddings computed |
+| `test_incremental_scan_file_modified` | Changing a file → `scan` re-embeds only that file's chunks |
+| `test_incremental_scan_new_file` | Adding a file → `scan` creates new chunks |
+| `test_incremental_scan_file_deleted` | Removing a file → `scan` deletes its chunks + hash record |
+| `test_incremental_scan_new_skill` | Adding a new skill dir → `scan` indexes it fully |
+| `test_incremental_scan_skill_removed` | Deleting a SKILL.md → `scan` cascade-deletes skill |
+| `test_full_reindex` | `scan --full` re-embeds all chunks regardless of hash state |
+| `test_hash_change_detection` | Modifying a file changes its sha256; scan detects and re-embeds |
+| `test_directory_walk_depth` | Nested skill dirs at depth 1-3 are found; depth >3 requires explicit path |
+| `test_circular_symlink_handling` | Symlink loop doesn't crash scanner |
+| `test_scan_empty_tracked_dir` | No SKILL.md files → empty result, no crash |
+
+#### 3. Embedder (`tests/test_embedder.py`)
+
+| Test | What it verifies |
+|------|-----------------|
+| `test_model_loads` | sentence-transformers model loads successfully |
+| `test_embed_dimension` | Output vectors are 384-dim float32 |
+| `test_batch_embedding` | Batch of 32 returns 32 vectors |
+| `test_deterministic_output` | Same input → same embedding (seed consistency) |
+| `test_model_fallback` | Model download fails → returns None, scanner falls back gracefully |
+| `test_embed_edge_cases` | Empty string, very long string, unicode, code snippets |
+
+#### 4. Search Engine (`tests/test_search.py`)
+
+| Test | What it verifies |
+|------|-----------------|
+| `test_search_returns_results` | Known query returns expected skill in top results |
+| `test_search_empty_index` | Search before any scan → empty results, no crash |
+| `test_weight_effect` | Two skills with different section matches: higher-weighted section match scores higher |
+| `test_dedup_collapse` | Same skill in two dirs → only higher-priority one in results |
+| `test_dedup_priority_order` | Config dir order determines priority |
+| `test_section_filter` | `--section "when to use"` only returns chunks of that type |
+| `test_dir_filter` | `--dir ~/my-skills` only returns skills from that source |
+| `test_top_limit` | `--top 3` returns at most 3 results |
+| `test_json_output_structure` | `--json` output has all required fields: name, score, source_dir, abs_path, files, file_count |
+| `test_json_file_manifest` | `files` lists all indexed files relative to skill dir |
+| `test_keyword_fallback` | Embedder disabled → keyword search returns reasonable results |
+
+#### 5. SQLite + sqlite-vec (`tests/test_db.py`)
+
+| Test | What it verifies |
+|------|-----------------|
+| `test_vector_insert_and_query` | Known vector inserted → cosine similarity query returns correct ranking |
+| `test_vector_dimension_mismatch` | Wrong dimension vector → clear error |
+| `test_concurrent_reads` | Multiple readers at once → no crashes |
+| `test_write_lock` | Concurrent writes → serialized, no corruption |
+| `test_cascade_delete` | Deleting a skill → its chunks and hashes also deleted |
+| `test_wal_mode` | DB created with WAL journal mode |
+| `test_empty_vec_search` | Empty vec_chunks table → query returns empty |
+
+#### 6. CLI (`tests/test_cli.py`)
+
+| Test | What it verifies |
+|------|-----------------|
+| `test_add_dir` | `skill-manager add <dir>` updates config and triggers scan |
+| `test_add_dir_invalid` | Non-existent dir → error exit code + message |
+| `test_remove_dir` | `skill-manager remove <dir>` removes from config, leaves files |
+| `test_list_human` | Default output is grouped by source_dir |
+| `test_list_json` | `--json` returns valid JSON array |
+| `test_list_json_fields` | JSON has skill_name, description, source_dir, abs_path |
+| `test_search_cli` | `skill-manager search <query>` prints table to stdout |
+| `test_search_json` | `--json` outputs valid JSON |
+| `test_search_exit_codes` | No results → exit 0 (empty); error → exit 1 |
+| `test_scan_cli` | `skill-manager scan` completes with exit 0 |
+| `test_scan_full` | `--full` completes with exit 0 |
+| `test_copy` | `skill-manager copy <name>` copies skill dir to cwd |
+| `test_copy_conflict` | Target exists without `--force` → error |
+| `test_copy_force` | With `--force` → overwrites |
+| `test_symlink` | `skill-manager symlink <name>` creates symlink |
+| `test_edit` | `skill-manager edit <name>` opens $EDITOR (mock $EDITOR) |
+| `test_delete` | `skill-manager delete <name>` removes from DB |
+| `test_delete_nonexistent` | Non-existent skill → error |
+| `test_install_timer` | `skill-manager install-timer` creates systemd unit files |
+| `test_remove_timer` | `skill-manager remove-timer` removes systemd unit files |
+| `test_config_show` | `skill-manager config` prints resolved config |
+| `test_status` | `skill-manager status` shows counts and health |
+| `test_status_json` | `--json` outputs valid JSON |
+| `test_help` | `skill-manager --help` lists all commands |
+
+#### 7. Integration (`tests/test_integration.py`)
+
+| Test | What it verifies |
+|------|-----------------|
+| `test_full_workflow` | `add` → `scan` → `search` → `copy` → `list` → `delete` in sequence |
+| `test_index_then_search` | Index fixture dirs, search confirms expected results |
+| `test_incremental_then_search` | Modify a fixture file, re-scan, search returns updated content |
+
+### Running Tests
+
+```bash
+# All tests
+pytest
+
+# With coverage
+pytest --cov=skill_manager --cov-report=term-missing
+
+# Specific layer
+pytest tests/test_chunker.py -v
+pytest tests/test_cli.py -v
+
+# Exclude acceptance tests (no model download)
+pytest -m "not acceptance"
+
+# Quick smoke test (no real embeddings)
+pytest tests/test_chunker.py tests/test_db.py tests/test_cli.py -v
+```
 
 ## v2/v3/v4 Preview (not in scope for v1)
 
