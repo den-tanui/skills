@@ -128,7 +128,7 @@ class Database:
     def upsert_skill(self, name: str, source_dir_id: int, dir_path: str,
                      abs_path: str, description: str = "",
                      frontmatter_json: str = "", size_bytes: int = 0) -> int:
-        cur = self.execute("""
+        self.execute("""
             INSERT INTO skills (name, source_dir_id, dir_path, abs_path,
                                 description, frontmatter_json, size_bytes,
                                 indexed_at, modified_at)
@@ -141,8 +141,7 @@ class Database:
         """, (name, source_dir_id, dir_path, abs_path, description,
               frontmatter_json, size_bytes))
         self.commit()
-        if cur.lastrowid:
-            return cur.lastrowid
+        # Always fetch the real id (lastrowid unreliable with ON CONFLICT)
         row = self.execute(
             "SELECT id FROM skills WHERE name = ? AND abs_path = ?",
             (name, abs_path)

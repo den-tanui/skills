@@ -48,14 +48,17 @@ class Embedder:
 
 
 class MockEmbedder:
-    """Mock embedder for testing — returns random unit vectors."""
+    """Mock embedder for testing — returns fixed vectors for deterministic tests."""
+
+    def __init__(self) -> None:
+        self._fixed: np.ndarray = np.random.RandomState(42).randn(384).astype(np.float32)
+        self._fixed /= np.linalg.norm(self._fixed)
 
     def embed(self, text: str) -> np.ndarray:
-        vec = np.random.randn(384).astype(np.float32)
-        return vec / np.linalg.norm(vec)
+        return self._fixed.copy()
 
     def embed_batch(self, texts: List[str], batch_size: int = 32) -> List[np.ndarray]:
-        return [self.embed(t) for t in texts]
+        return [self._fixed.copy() for _ in texts]
 
     @property
     def is_loaded(self) -> bool:

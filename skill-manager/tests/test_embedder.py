@@ -20,6 +20,7 @@ def test_mock_embed_batch():
 @pytest.mark.acceptance
 def test_real_embedder():
     """Test with real model — only runs when explicitly requested."""
+    pytest.importorskip("sentence_transformers")
     embedder = Embedder()
     vec = embedder.embed("form validation with zod")
     assert vec.shape == (384,)
