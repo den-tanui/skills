@@ -176,11 +176,38 @@ on = "pane.agent_status_changed"
 command = ["bash", "on-agent-status.sh"]
 ```
 
-**Available events:**
+**Available events (from the Herdr socket API):**
+
+*Workspace lifecycle:*
+
+- `workspace.created` — a workspace was created
+- `workspace.focused` — a workspace gained focus
+- `workspace.renamed` — a workspace was renamed
+- `workspace.updated` — workspace metadata changed
+- `workspace.closed` — a workspace was closed
+
+*Tab lifecycle:*
+
+- `tab.focused` — a tab gained focus
+- `tab.renamed` — a tab was renamed
+
+*Pane lifecycle:*
+
+- `pane.created` — a pane was created
+- `pane.focused` — a pane gained focus
+- `pane.closed` — a pane was closed
+- `pane.moved` — a pane moved between tabs/workspaces
+- `pane.agent_detected` — an agent was detected in a pane
+- `pane.agent_status_changed` — agent status changed (done, blocked, idle, etc.)
+
+*Worktree lifecycle:*
 
 - `worktree.created` — a new git worktree was created and opened as a workspace
 - `worktree.opened` — an existing worktree was opened into a workspace
-- `pane.agent_status_changed` — an agent pane changed status (done, blocked, etc.)
+- `worktree.removed` — a worktree checkout was removed
+
+*Note:* Event names are validated at link time. An unrecognised name produces a warning
+but the link still succeeds. Check the `warnings` field in the `plugin.link` response.
 
 **Event commands** receive:
 
@@ -645,26 +672,197 @@ version/platform, falling back to `cargo build`:
 # scripts/fetch-or-build.sh — downloads prebuilt or builds from source
 ```
 
-### Pattern 6: Config-driven plugin
+### Pattern 6: Config-driven plugin (JSON/TOML)
 
-Store user configuration in `HERDR_PLUGIN_CONFIG_DIR`:
+Store user configuration in `HERDR_PLUGIN_CONFIG_DIR`. For richer configs,
+use TOML with `smol-toml` (lightweight, no runtime deps):
 
-```javascript
-const fs = require("fs");
-const path = require("path");
+```toml
+# $HERDR_PLUGIN_CONFIG_DIR/config.toml
+[projects]
+roots = ["~/Projects", "~/Workspace"]
 
-const configDir = process.env.HERDR_PLUGIN_CONFIG_DIR;
-const configPath = path.join(configDir, "config.json");
+[layout]
+placement = "overlay"
+focus = "editor"
 
-// Load or create config
-let config = {};
-if (fs.existsSync(configPath)) {
-  config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-} else {
-  config = { theme: "dark", enabled: true };
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+[[tabs.dev]]
+label = "dev"
+[[tabs.dev.panes]]
+id = "editor"
+title = "nvim"
+command = "nvim"
+[[tabs.dev.panes]]
+id = "agent"
+split = "right"
+ratio = 0.3
+command = "opencode"
+```
+
+Load in TypeScript:
+
+```typescript
+import { parse } from "smol-toml";
+import { readFileSync, existsSync, mkdirSync } from "node:fs";
+
+const configDir = process.env.HERDR_PLUGIN_CONFIG_DIR!;
+const configPath = `${configDir}/config.toml`;
+
+const raw = existsSync(configPath)
+  ? readFileSync(configPath, "utf8")
+  : "";
+const config = parse(raw) as MyConfig;
+```
+
+**Three-layer precedence** (used by real plugins like herdr-floax):
+`defaults < config file < env var overrides`. The file is optional — missing =
+smart defaults. Env vars like `MY_PLUGIN_WIDTH_PCT` override the file.
+
+**Repo-local overrides:** Check for a `.my-plugin/config.toml` in the target
+directory (CWD or workspace root) to let projects self-configure.
+
+### Pattern 7: Toggle / singleton pane
+
+A common interactive pattern: a single keypress toggles a workspace-specific pane
+(like tmux-floax). Open, reveal (if hidden), or dismiss (if focused).
+
+**Action script (toggle-floating.sh):**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+herdr_bin="${HERDR_BIN_PATH:-herdr}"
+ws="${HERDR_WORKSPACE_ID:?}"
+sentinel="my-tool"
+
+# Check if pane already exists for this workspace
+pane_info=$("$herdr_bin" pane list --workspace "$ws" 2>/dev/null | jq -r '.[] | select(.label=="'"$sentinel"'")")
+
+if [ -z "$pane_info" ]; then
+  # Open
+  exec "$herdr_bin" plugin pane open \
+    --plugin my-org.my-plugin --entrypoint my-pane \
+    --placement split --focus
+fi
+
+pane_id=$(echo "$pane_info" | jq -r '.pane_id')
+focused_pane_id=$("$herdr_bin" pane current --json | jq -r '.pane.pane_id')
+
+if [ "$pane_id" = "$focused_pane_id" ]; then
+  # Focused → dismiss
+  "$herdr_bin" pane close "$pane_id"
+else
+  # Unfocused → reveal
+  "$herdr_bin" tab focus "$("$herdr_bin" pane get "$pane_id" | jq -r '.tab_id')"
+  "$herdr_bin" pane focus "$pane_id"
+  "$herdr_bin" pane zoom "$pane_id" --mode on
+fi
+```
+
+**Alternate singleton approach** (for tab-based like agent-dashboard):
+use a sentinel tab label, find-or-create on toggle, process-alive check:
+
+```bash
+# Find tab by label, verify process is still alive via pane process-info
+tab_info=$("$herdr_bin" tab list --workspace "$ws" 2>/dev/null | \
+  jq -r '.[] | select(.label=="◆ agents")')
+```
+
+### Pattern 8: fzf-based interactive picker
+
+For interactive selection UIs, pipe options through fzf in an overlay pane.
+Supports preview, multi-select, custom keybinds, and yank/open actions.
+
+**Pane entry (Go):**
+
+```go
+// Collect options
+entries := listSomething()
+
+// Pipe to fzf with preview
+cmd := exec.Command("fzf",
+  "--ansi",
+  "--preview", previewScript,
+  "--expect=ctrl-y", // custom exit keys
+  "--prompt=Pick> ",
+)
+cmd.Stdin = strings.NewReader(strings.Join(entries, "\n"))
+out, _ := cmd.Output()
+lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+key, selection := lines[0], lines[1]
+
+switch key {
+case "ctrl-y": yank(selection)
+default: open(selection)
 }
 ```
+
+**NOTE:** Install `fzf` first. Check with `command -v fzf` or `Bun.which("fzf")`
+and exit with a helpful message: `echo "Install fzf: brew install fzf" >&2; exit 1`.
+
+### Pattern 9: Event-driven title/state sync
+
+React to multiple events to keep external state in sync. Register many event
+handlers pointing to the same script, which uses `HERDR_PLUGIN_EVENT` to decide
+what to do:
+
+```toml
+[[events]]
+on = "workspace.focused"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "workspace.renamed"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "tab.focused"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "pane.focused"
+command = ["node", "sync.mjs"]
+```
+
+```javascript
+// sync.mjs
+const event = JSON.parse(process.env.HERDR_PLUGIN_EVENT_JSON || "{}");
+// Build state from herdr CLI, update external target
+```
+
+Write to `$HERDR_PLUGIN_STATE_DIR/last-state` to avoid redundant updates
+(compare before/after, skip if unchanged).
+
+### Pattern 10: Worktree layout bootstrap
+
+When Herdr creates/opens a worktree, auto-apply a tab layout:
+
+```toml
+[[events]]
+on = "worktree.created"
+command = ["./bin/my-plugin", "on-worktree"]
+
+[[events]]
+on = "worktree.opened"
+command = ["./bin/my-plugin", "on-worktree"]
+```
+
+```typescript
+// on-worktree.ts
+const event = JSON.parse(process.env.HERDR_PLUGIN_EVENT_JSON!);
+const wsId = event.data?.workspace_id;
+
+// Idempotency guard: skip if workspace already has >1 pane
+const panes = await herdr.json<Pane[]>(["pane", "list", "--workspace", wsId]);
+if (panes.length > 1) process.exit(0);
+
+// Apply layout: rename first pane, split, run commands
+await herdr.run(["pane", "rename", `${wsId}:p1`, "editor"]);
+await herdr.run(["pane", "split", `${wsId}:p1`, "--direction", "right"]);
+```
+
+**Gotcha:** Both `worktree.created` and `worktree.opened` can fire for the same
+worktree. Always guard with an idempotency check (pane count, state file, etc.).
 
 ---
 

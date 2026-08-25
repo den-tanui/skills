@@ -68,8 +68,12 @@ Create new skills, modify and improve existing skills, and measure skill perform
 
 Port tmux plugins to Herdr plugins. Use this skill whenever the user wants to convert or port a tmux plugin to a Herdr plugin — given a tmux plugin GitHub URL or local path, analyze its features, keybindings, tmux commands, configuration options, and dependencies, then produce a spec document, implementation plan, and fully working Herdr plugin. Also use when the user asks how a specific tmux feature maps to Herdr, wants to understand what a tmux plugin does in Herdr terms, or wants to recreate a tmux workflow as a Herdr plugin. Do NOT use this skill for general Herdr plugin authoring — that is the herdr-plugin-dev skill's domain.
 
+### [zsh-completions](zsh-completions/SKILL.md)
+
+Write a zsh completion script (_cmd) for a CLI tool from its --help output or man page. Use when the user asks to create, generate, or improve zsh completions for a command.
+
 ---
 
-*Generated on 2026-07-13*
+*Generated on 2026-08-25*
 
-*Total skills: 16*
+*Total skills: 17*
