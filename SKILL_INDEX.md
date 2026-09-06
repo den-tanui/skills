@@ -4,14 +4,6 @@ This is an automatically generated index of all skills in this repository.
 
 ## Skills List
 
-### [code-chunking](skill-manager/tests/fixtures/code-files/SKILL.md)
-
-Test skill for code chunking
-
-### [empty-skill](skill-manager/tests/fixtures/empty-dir/SKILL.md)
-
-A skill with no body content
-
 ### [fzf](fzf/SKILL.md)
 
 Comprehensive patterns and documentation for building advanced, interactive CLI tools using fzf in shell scripts. Updated description for testing.
@@ -56,9 +48,9 @@ Use when creating, writing, or generating Nuclei YAML templates for CVE coverage
 
 Guide for creating OpenCode plugins from scratch — scaffolding, implementing tools/hooks/events, bundling skills and agents, local testing, and publishing to npm. Use when the user asks to create a plugin, extend OpenCode, add custom tools/hooks, develop an extension, or mentions plugin development. Also trigger when users say "I want to build a plugin", "add custom tools to opencode", "create an opencode extension", or reference @opencode-ai/plugin.
 
-### [react-form-validation](skill-manager/tests/fixtures/valid-skill/SKILL.md)
+### [opencode-pty](opencode-pty/SKILL.md)
 
-Validates React forms with Zod
+Interactive PTY management for OpenCode — spawn background processes, send interactive input, read output with regex filtering, and manage multiple terminal sessions simultaneously.
 
 ### [skill-creator](.agents/skills/skill-creator/SKILL.md)
 
@@ -74,6 +66,6 @@ Write a zsh completion script (_cmd) for a CLI tool from its --help output or ma
 
 ---
 
-*Generated on 2026-08-25*
+*Generated on 2026-09-06*
 
-*Total skills: 17*
+*Total skills: 15*
