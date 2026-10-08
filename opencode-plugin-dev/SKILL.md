@@ -2,10 +2,9 @@
 name: opencode-plugin-dev
 description: >
   Guide for creating OpenCode plugins from scratch — scaffolding, implementing tools/hooks/events,
-  bundling skills and agents, local testing, and publishing to npm. Use when the user asks to
-  create a plugin, extend OpenCode, add custom tools/hooks, develop an extension, or mentions
-  plugin development. Also trigger when users say "I want to build a plugin", "add custom
-  tools to opencode", "create an opencode extension", or reference @opencode-ai/plugin.
+  bundling skills and agents, local testing, and publishing to npm.
+  Use when the user asks to create a plugin, extend OpenCode, add custom tools/hooks,
+  develop an extension, or mentions @opencode-ai/plugin.
 ---
 
 # OpenCode Plugin Development Skill
@@ -47,6 +46,24 @@ supporting documents as needed.
 
 ---
 
+## Migrating from V1 to V2
+
+If the user has an existing OpenCode 1 (V1) plugin, use `references/migrate-v1.md` for the
+full migration guide. In short:
+
+- V1 plugin implementations **do not run in V2**. Move a file or rename its config entry only
+  if you want it to load — the code still must be ported.
+- Rename `plugin` → `plugins` in `opencode.json`. Replace a package-and-options tuple with an
+  object.
+- Replace the V1 function export with `Plugin.define({ id, async setup(ctx) })`.
+- Register hooks on the domain that owns the operation (`ctx.tool.hook`, `ctx.session.hook`,
+  `ctx.tool.transform`, etc.), not as string-keyed return values.
+- Replace the old tool() helper with a `ctx.tool.transform` editor (JSON Schema inputs).
+- Return a cleanup function from `setup` instead of a `dispose()` hook.
+- Use `ctx.storage` for plugin-scoped persistent state.
+
+---
+
 ## Scaffolding
 
 Create this directory structure:
@@ -61,8 +78,8 @@ my-plugin/
 │   └── agents/           # Bundled agents (optional)
 │       └── my-agent.md
 ├── package.json          # Dependencies: @opencode-ai/plugin
-├── tsconfig.json        # TypeScript configuration
-└── README.md            # Documentation
+├── tsconfig.json         # TypeScript configuration
+└── README.md             # Documentation
 ```
 
 ### Minimal package.json
@@ -199,6 +216,7 @@ For complex plugins with multiple tools, agents, or orchestration, see:
 ## References
 
 - **Plugin Anatomy**: `references/plugin-anatomy.md` — Context object, all hooks, load order
-- **Tools Guide**: `references/tools-guide.md` — tool() helper, Zod schemas, context args
-- **Publishing**: `references/publishing.md` — npm publish, local testing, file:// protocol
+- **Tools Guide**: `references/tools-guide.md` — `tool()` helper, Zod schemas, context args
+- **Publishing**: `references/publishing.md` — npm publish, local testing, distribution
 - **Advanced Patterns**: `references/advanced-patterns.md` — Real code from popular plugins
+- **V1 to V2 Migration**: `references/migrate-v1.md` — Port existing OpenCode 1 plugins

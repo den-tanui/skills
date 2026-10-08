@@ -25,11 +25,15 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
       // console.log(`[my-plugin] Event: ${event.type}`)
 
       if (event.type === "session.created") {
-        console.log(`[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} started`)
+        console.log(
+          `[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} started`
+        )
       }
 
       if (event.type === "session.idle") {
-        console.log(`[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} completed`)
+        console.log(
+          `[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} completed`
+        )
       }
     },
 

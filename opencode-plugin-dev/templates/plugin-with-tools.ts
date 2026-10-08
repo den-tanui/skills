@@ -103,7 +103,9 @@ export const MyPlugin: Plugin = async (ctx) => {
     // -------------------------------------------
     event: async ({ event }) => {
       if (event.type === "session.created") {
-        console.log(`[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} started`)
+        console.log(
+          `[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} started`
+        )
       }
     },
   }

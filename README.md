@@ -20,6 +20,10 @@ Production-grade fzf patterns for robust, defensive shell scripts
 
 Convert fzf workflows into portable Bash scripts using numbered menus and read input, removing TUI dependencies while maintaining functionality.
 
+### [gnu-parallel](gnu-parallel/SKILL.md)
+
+Master GNU Parallel for running jobs in parallel — from the official GNU Parallel 2018 manual. Use when the user asks to parallelize commands, process input in parallel, use --pipe/--pipepart, run jobs remotely over SSH, control output/ordering/buffering, retry/fail-fast/termination, use semaphores, use profiles, debug parallel commands, or when the user mentions GNU Parallel, parallel, --pipe, --pipepart, --xargs, --joblog.
+
 ### [go-tui-architecture](go-tui-architecture/SKILL.md)
 
 Scaffold a Go TUI application with clean layered architecture — Bubbletea + tview, config, persistence, plugin system, themes, and CI/CD. Use when starting a new Go TUI project, scaffolding a Bubbletea app, or creating a terminal UI with separation of concerns.
@@ -46,7 +50,7 @@ Use when creating, writing, or generating Nuclei YAML templates for CVE coverage
 
 ### [opencode-plugin-dev](opencode-plugin-dev/SKILL.md)
 
-Guide for creating OpenCode plugins from scratch — scaffolding, implementing tools/hooks/events, bundling skills and agents, local testing, and publishing to npm. Use when the user asks to create a plugin, extend OpenCode, add custom tools/hooks, develop an extension, or mentions plugin development. Also trigger when users say "I want to build a plugin", "add custom tools to opencode", "create an opencode extension", or reference @opencode-ai/plugin.
+Guide for creating OpenCode plugins from scratch — scaffolding, implementing tools/hooks/events, bundling skills and agents, local testing, and publishing to npm. Use when the user asks to create a plugin, extend OpenCode, add custom tools/hooks, develop an extension, or mentions @opencode-ai/plugin.
 
 ### [opencode-pty](opencode-pty/SKILL.md)
 
@@ -66,6 +70,6 @@ Write a zsh completion script (_cmd) for a CLI tool from its --help output or ma
 
 ---
 
-*Generated on 2026-09-06*
+*Generated on 2026-10-08*
 
-*Total skills: 15*
+*Total skills: 16*

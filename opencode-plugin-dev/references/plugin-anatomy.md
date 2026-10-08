@@ -36,7 +36,7 @@ await client.session.prompt({
 
 // Log to OpenCode's app logger
 await client.app.log({
-  body: { service: 'my-plugin', level: 'info', message: '...' }
+  body: { service: "my-plugin", level: "info", message: "..." }
 })
 
 // Show TUI toast notification
@@ -69,7 +69,7 @@ OpenCode loads plugins in this order (all hooks run in sequence):
 ### Session Events
 
 | Event | When It Fires | Input Object |
-|-------|----------------|-------------|
+|-------|----------------|--------------|
 | `session.created` | New session starts | `{ type, session_id, ... }` |
 | `session.updated` | Session metadata changes | `{ type, session_id, ... }` |
 | `session.deleted` | Session removed | `{ type, session_id }` |
@@ -241,7 +241,8 @@ import type { Plugin } from "@opencode-ai/plugin"
 function helper() { /* ... */ }
 ```
 
-**Why?** OpenCode loads plugin files individually via symlinks. A file importing `./utils.ts` won't have access to that file.
+**Why?** OpenCode loads plugin files individually via symlinks. A file importing
+`./utils.ts` won't have access to that file.
 
 **Solution:** Use npm packages (declare in `package.json`) or bundle code inline.
 

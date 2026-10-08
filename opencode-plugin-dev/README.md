@@ -9,6 +9,7 @@ A comprehensive skill for creating OpenCode plugins from scratch.
 - **references/tools-guide.md**: How to create custom tools with Zod validation
 - **references/publishing.md**: npm publish, local testing, distribution
 - **references/advanced-patterns.md**: Real patterns from popular plugins like oh-my-opencode-slim, opencode-skill-creator, opencode-remote-config
+- **templates/**: Ready-to-copy code templates
 
 ## Quick Start
 
@@ -31,7 +32,7 @@ A comprehensive skill for creating OpenCode plugins from scratch.
 
 4. **Build and test**:
    ```bash
-   bun build src/index.ts --outdir dist --target node --format esm
+   bun run build
    ```
 
 5. **Load in OpenCode** (see SKILL.md for details)
@@ -62,7 +63,7 @@ A comprehensive skill for creating OpenCode plugins from scratch.
 A: Global: `~/.config/opencode/plugin/` | Project: `.opencode/plugin/`
 
 **Q: How do I test without publishing?**
-A: Use `"file:///path/to/plugin"` in your `opencode.json` plugin array
+A: Use `["file:///path/to/plugin"]` in your `opencode.json` plugin array
 
 **Q: Why isn't my plugin loading?**
 A: Make sure to restart OpenCode completely (kill the process, not just new session)

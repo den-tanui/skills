@@ -1,7 +1,7 @@
 {
-  "name": "opencode-your-plugin",
+  "name": "opencode-plugin-dev",
   "version": "1.0.0",
-  "description": "Brief description of what your plugin does",
+  "description": "Template package for OpenCode plugins. Modify name, main, and dependencies before use.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -36,5 +36,5 @@
     "typescript": "^5.9.0",
     "zod": "^4.0.0"
   },
-  "trustedDependencies": [],
+  "trustedDependencies": []
 }

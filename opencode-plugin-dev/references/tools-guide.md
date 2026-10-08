@@ -33,7 +33,8 @@ export const MyPlugin: Plugin = async (ctx) => {
 }
 ```
 
-**Important:** Filename determines tool name for standalone tools. For plugin tools, the key in `tool: {}` determines the name.
+**Important:** Filename determines tool name for standalone tools. For plugin tools, the key
+in `tool: {}` determines the name.
 
 ---
 
@@ -184,7 +185,8 @@ export const MyPlugin: Plugin = async (ctx) => {
 
 ## Tool Name Conflicts
 
-**Rule:** If a custom tool uses the same name as a built-in tool, the **custom tool takes precedence**.
+**Rule:** If a custom tool uses the same name as a built-in tool, the **custom tool takes
+precedence**.
 
 ```typescript
 // This replaces the built-in bash tool

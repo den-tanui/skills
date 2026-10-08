@@ -62,7 +62,7 @@ export const MyPlugin: Plugin = async (ctx) => {
                   const isDir = statSync(fullPath).isDirectory()
                   entries.push(isDir ? `${entry}/` : entry)
                   if (isDir) {
-                    entries.push(...scan(fullPath, currentDepth + 1).map(e => `  ${e}`))
+                    entries.push(...scan(fullPath, currentDepth + 1).map((e) => `  ${e}`))
                   }
                 }
               } catch {}
@@ -143,7 +143,9 @@ export const MyPlugin: Plugin = async (ctx) => {
         case "session.idle":
           if (sessionId) {
             const state = sessionStore.get(sessionId)
-            console.log(`[my-plugin] Session ${sessionId} idle. Tools called: ${state?.toolsCalled || 0}`)
+            console.log(
+              `[my-plugin] Session ${sessionId} idle. Tools called: ${state?.toolsCalled || 0}`
+            )
           }
           break
 
@@ -217,7 +219,7 @@ export const MyPlugin: Plugin = async (ctx) => {
 - Tools called: ${state.toolsCalled}
 - Files modified: ${state.filesModified.length}
 - Custom state keys: ${Object.keys(state.customState).join(", ") || "none"}
-      `.trim())
+`.trim())
     },
   }
 }

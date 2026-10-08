@@ -6,7 +6,6 @@ import type { Plugin } from "@opencode-ai/plugin"
  * Demonstrates tool interception hooks (before/after execution)
  * and event handling.
  */
-
 export const MyPlugin: Plugin = async ({ client, $, directory }) => {
   console.log(`[my-plugin] Loaded with hooks in ${directory}`)
 
@@ -79,21 +78,29 @@ export const MyPlugin: Plugin = async ({ client, $, directory }) => {
     event: async ({ event }) => {
       switch (event.type) {
         case "session.created":
-          console.log(`[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} started`)
+          console.log(
+            `[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} started`
+          )
           break
 
         case "session.idle":
-          console.log(`[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} completed`)
+          console.log(
+            `[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} completed`
+          )
           // Could send notification, update external systems, etc.
           break
 
         case "session.deleted":
-          console.log(`[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} deleted`)
+          console.log(
+            `[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} deleted`
+          )
           toolCallCount.clear() // Cleanup
           break
 
         case "session.compacted":
-          console.log(`[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} compacted`)
+          console.log(
+            `[my-plugin] Session ${(event as any).sessionId || (event as any).session_id} compacted`
+          )
           break
       }
     },
