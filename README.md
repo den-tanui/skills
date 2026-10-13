@@ -70,6 +70,6 @@ Write a zsh completion script (_cmd) for a CLI tool from its --help output or ma
 
 ---
 
-*Generated on 2026-10-08*
+*Generated on 2026-10-13*
 
 *Total skills: 16*
