@@ -1,3 +1,9 @@
+---
+name: spec-driven-agentic-engineering
+description: Governs software design, architectural specification, task decomposition, wave scheduling, and dual-gate quality enforcement for autonomous multi-agent software engineering systems. Transforms raw natural-language requirements (PRDs) into deterministic, machine-readable specifications (Semantic Software Architecture Trees and Task DAGs) before executing code generation across specialized agent swarms.
+license: MIT
+---
+
 # SKILL: Spec-Driven Agentic Engineering (SDAE)
 ## Grounded in Unix Design Principles for Multi-Agent Software Development
 

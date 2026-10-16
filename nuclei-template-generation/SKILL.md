@@ -1,6 +1,7 @@
 ---
 name: nuclei-template-generation
 description: Use when creating, writing, or generating Nuclei YAML templates for CVE coverage, vulnerability detection, exposure detection, misconfiguration checks, or security scanning workflows
+license: MIT
 ---
 
 # Nuclei Template Generation

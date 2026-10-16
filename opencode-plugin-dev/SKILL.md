@@ -5,6 +5,7 @@ description: >
   bundling skills and agents, local testing, and publishing to npm.
   Use when the user asks to create a plugin, extend OpenCode, add custom tools/hooks,
   develop an extension, or mentions @opencode-ai/plugin.
+license: MIT
 ---
 
 # OpenCode Plugin Development Skill

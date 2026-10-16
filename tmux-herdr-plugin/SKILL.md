@@ -11,18 +11,7 @@ description: >-
 license: MIT
 metadata:
   herdr_min_version: "0.7.0"
-allowed-tools:
-  - read
-  - bash
-  - write
-  - edit
-  - ast_grep_search
-  - ast_grep_dump
-  - web_fetch
-  - web_search
-  - ask_user_question
-  - Agent
-  - todo
+allowed-tools: read bash write edit ast_grep_search ast_grep_dump web_fetch web_search ask_user_question Agent todo
 ---
 
 # Tmux → Herdr Plugin Porting

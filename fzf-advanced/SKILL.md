@@ -1,4 +1,6 @@
 ---
+name: fzf-advanced
+license: MIT
 title: Advanced fzf Mastery
 description: Production-grade fzf patterns for robust, defensive shell scripts
 skill_level: advanced

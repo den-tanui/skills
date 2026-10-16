@@ -1,6 +1,7 @@
 ---
 name: opencode-pty
 description: Interactive PTY management for OpenCode — spawn background processes, send interactive input, read output with regex filtering, and manage multiple terminal sessions simultaneously.
+license: MIT
 ---
 
 # OpenCode PTY Plugin - Comprehensive Skill Guide

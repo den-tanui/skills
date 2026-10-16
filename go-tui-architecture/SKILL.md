@@ -4,12 +4,8 @@ description: >
   Scaffold a Go TUI application with clean layered architecture — Bubbletea + tview, config,
   persistence, plugin system, themes, and CI/CD. Use when starting a new Go TUI project, scaffolding
   a Bubbletea app, or creating a terminal UI with separation of concerns.
-allowed-tools:
-  - Write
-  - Read
-  - Bash(go:*)
-  - Bash(mkdir:*)
-  - Bash(git:*)
+license: MIT
+allowed-tools: Write Read Bash(go:*) Bash(mkdir:*) Bash(git:*)
 when_to_use: >
   Use when the user asks to scaffold a new Go TUI application, create a Bubbletea project from
   scratch, or set up a terminal-based app with clean architecture. Trigger phrases: "scaffold a Go

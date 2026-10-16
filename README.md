@@ -16,7 +16,7 @@ Advanced fzf patterns and techniques for building robust shell scripts with inte
 
 Production-grade fzf patterns for robust, defensive shell scripts
 
-### [fzf-to-bash-refactor](fzf-bash/SKILL.md)
+### [fzf-to-bash-refactor](fzf-to-bash-refactor/SKILL.md)
 
 Convert fzf workflows into portable Bash scripts using numbered menus and read input, removing TUI dependencies while maintaining functionality.
 
@@ -28,7 +28,7 @@ Master GNU Parallel for running jobs in parallel — from the official GNU Paral
 
 Scaffold a Go TUI application with clean layered architecture — Bubbletea + tview, config, persistence, plugin system, themes, and CI/CD. Use when starting a new Go TUI project, scaffolding a Bubbletea app, or creating a terminal UI with separation of concerns.
 
-### [herdr](herdr-agent-skill/SKILL.md)
+### [herdr](herdr/SKILL.md)
 
 Control herdr from inside it. Manage workspaces and tabs, split panes, spawn agents, read output, and wait for state changes — all via CLI commands that talk to the running herdr instance over a local unix socket. Use when running inside herdr (HERDR_ENV=1).
 
@@ -44,7 +44,7 @@ Develop, modify, test, and publish Herdr plugins from scratch. Use this skill wh
 
 Test Terminal User Interface (TUI) applications programmatically using MCP. Like Playwright but for TUIs, supporting both stream mode for CLI tools and buffer mode for full TUI applications.
 
-### [nuclei-template-generation](nuclei-skill/SKILL.md)
+### [nuclei-template-generation](nuclei-template-generation/SKILL.md)
 
 Use when creating, writing, or generating Nuclei YAML templates for CVE coverage, vulnerability detection, exposure detection, misconfiguration checks, or security scanning workflows
 
@@ -60,6 +60,14 @@ Interactive PTY management for OpenCode — spawn background processes, send int
 
 Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.
 
+### [spec-driven-agentic-engineering](spec-driven-agentic-engineering/SKILL.md)
+
+Governs software design, architectural specification, task decomposition, wave scheduling, and dual-gate quality enforcement for autonomous multi-agent software engineering systems. Transforms raw natural-language requirements (PRDs) into deterministic, machine-readable specifications (Semantic Software Architecture Trees and Task DAGs) before executing code generation across specialized agent swarms.
+
+### [tiki](tiki/SKILL.md)
+
+view, create, update, delete tikis and manage dependencies
+
 ### [tmux-herdr-plugin](tmux-herdr-plugin/SKILL.md)
 
 Port tmux plugins to Herdr plugins. Use this skill whenever the user wants to convert or port a tmux plugin to a Herdr plugin — given a tmux plugin GitHub URL or local path, analyze its features, keybindings, tmux commands, configuration options, and dependencies, then produce a spec document, implementation plan, and fully working Herdr plugin. Also use when the user asks how a specific tmux feature maps to Herdr, wants to understand what a tmux plugin does in Herdr terms, or wants to recreate a tmux workflow as a Herdr plugin. Do NOT use this skill for general Herdr plugin authoring — that is the herdr-plugin-dev skill's domain.
@@ -70,6 +78,6 @@ Write a zsh completion script (_cmd) for a CLI tool from its --help output or ma
 
 ---
 
-*Generated on 2026-10-13*
+*Generated on 2026-10-16*
 
-*Total skills: 16*
+*Total skills: 18*

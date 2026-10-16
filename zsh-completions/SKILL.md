@@ -1,6 +1,7 @@
 ---
 name: zsh-completions
 description: Write a zsh completion script (_cmd) for a CLI tool from its --help output or man page. Use when the user asks to create, generate, or improve zsh completions for a command.
+license: MIT
 ---
 
 # Writing zsh completions from help text or a man page
